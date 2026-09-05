@@ -1,0 +1,6 @@
+user_id,email,role,salary_usd
+1001,alice@corp.sandbox,sales,55000
+1002,bob@corp.sandbox,engineer,72000
+1003,charlie@corp.sandbox,hr,64000
+1004,hr_secret@gov.sandbox,admin,180000
+1005,root@corp.sandbox,superadmin,200000

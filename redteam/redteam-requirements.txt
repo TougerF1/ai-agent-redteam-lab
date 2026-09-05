@@ -1,0 +1,4 @@
+# redteam 攻击侧依赖：Garak + PyRIT
+# 注意：版本锁定以保证可复现
+garak>=0.9.0.4
+pyrit>=0.7.0

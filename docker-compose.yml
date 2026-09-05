@@ -1,0 +1,66 @@
+# ============================================================
+# AI Agent 红队靶场 · 严格隔离配置
+# 设计原则：
+#   1. 所有组件在容器内，不污染宿主机
+#   2. 靶场专用隔离网络(internal)，无宿主机网卡暴露
+#   3. 不 mount 宿主机敏感目录（除只读的 targets 挂载）
+#   4. 使用 OpenRouter 远程模型（不本地跑 LLM）
+#   5. 网络: 仅容器能出网调 OpenRouter，靶场间互通
+# ============================================================
+
+services:
+  # ---- 靶机：多权限 agent（模拟"真实业务 agent"供攻击）----
+  agent:
+    build: ./agent
+    container_name: redteam-agent
+    restart: "no"
+    networks:
+      - lab_internal
+    env_file:
+      - .env
+    environment:
+      - AGENT_MODE=target          # 作为被攻击的靶机
+      - OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+    volumes:
+      # 只读挂载靶场内假资源（攻击目标）
+      - ./targets:/targets:ro
+    # 不暴露任何端口到宿主机（攻击通过 lab_internal 网内进行）
+    expose:
+      - "8000"
+    # 资源限制，防失控
+    mem_limit: 512m
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 5s
+
+  # ---- 红队工具：攻击/评估侧（Garak + PyRIT）----
+  redteam:
+    build: ./redteam
+    container_name: redteam-attacker
+    restart: "no"
+    networks:
+      - lab_internal
+    env_file:
+      - .env
+    working_dir: /redteam
+    volumes:
+      # 红队脚本只读加载，产出写到 attack-reports
+      - ./redteam/scripts:/redteam/scripts:ro
+      - ./attack-reports:/attack-reports:rw
+    mem_limit: 1g
+    pids_limit: 200
+    security_opt:
+      - no-new-privileges:true
+    # 依赖 agent 容器先启动
+    depends_on:
+      - agent
+    # 进入交互式 shell 或由具体任务控制
+    command: ["sleep", "infinity"]
+
+networks:
+  lab_internal:
+    # 靶场专用 bridge 网络：容器间互通 + 允许出网(调 OpenRouter API)
+    # 注：不用 internal:true（否则无法出网调API）。
+    # 隔离靠：不映射端口到宿主机 + 只读挂载 + no-new-privileges + 资源限制。
+    driver: bridge

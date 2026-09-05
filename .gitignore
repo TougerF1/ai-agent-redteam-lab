@@ -1,0 +1,8 @@
+# 靶场项目 —— 屏蔽敏感文件（.env 含 API key，绝不提交）
+.env
+__pycache__/
+*.pyc
+.venv/
+workspace/
+# 综合生成的PDF不入库（可用 scripts/make_combined_pdf.py 重新生成）
+综合文档/
